@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiter Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#1e293b',
+                        accent: '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">Rate Limiter Dashboard</h1>
+                <p class="text-gray-400 mt-2">Visualize and test advanced rate limiting algorithms</p>
+            </div>
+            <div class="flex space-x-4">
+                <select id="algoSelector" class="bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                    <option value="fixed_window">Fixed Window</option>
+                    <option value="sliding_window_log">Sliding Window Log</option>
+                    <option value="sliding_window_counter">Sliding Window Counter</option>
+                    <option value="token_bucket">Token Bucket</option>
+                    <option value="leaky_bucket">Leaky Bucket</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Global Metrics -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Total Requests</h3>
+                <div class="flex items-end justify-between">
+                    <span id="totalRequests" class="text-4xl font-bold text-white">0</span>
+                    <span class="text-green-400 text-sm">Global</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Total 429s</h3>
+                <div class="flex items-end justify-between">
+                    <span id="total429s" class="text-4xl font-bold text-red-400">0</span>
+                    <span class="text-red-400 text-sm">Blocked</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-gray-400 text-sm font-medium uppercase tracking-wider mb-4">Active IPs</h3>
+                <div class="flex items-end justify-between">
+                    <span id="activeIPs" class="text-4xl font-bold text-blue-400">0</span>
+                    <span class="text-blue-400 text-sm">Tracking</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Interactive Client -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold mb-4">Interactive Client</h2>
+                <div id="clickArea" class="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors relative overflow-hidden group">
+                    <span class="text-gray-400 group-hover:text-white transition-colors z-10">Click to Spam API</span>
+                    <div id="rippleContainer" class="absolute inset-0 pointer-events-none"></div>
+                </div>
+                <div class="mt-4 flex justify-between items-center text-sm text-gray-400">
+                    <span>Status: <span id="lastStatus" class="font-bold text-white">-</span></span>
+                    <span>Latency: <span id="lastLatency" class="font-bold text-white">-</span> ms</span>
+                </div>
+            </div>
+
+            <!-- Console / Logs -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 flex flex-col h-[400px]">
+                <h2 class="text-xl font-bold mb-4">Request Log</h2>
+                <div id="consoleLog" class="flex-1 overflow-y-auto font-mono text-xs space-y-1 p-2 bg-gray-900 rounded border border-gray-700">
+                    <!-- Logs go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentAlgo = 'fixed_window';
+        
+        // Update algo
+        document.getElementById('algoSelector').addEventListener('change', (e) => {
+            currentAlgo = e.target.value;
+            log(`Switched to ${currentAlgo}`, 'info');
+        });
+
+        // Polling metrics
+        async function fetchMetrics() {
+            try {
+                const res = await fetch(`${API_BASE}/monitor`);
+                const data = await res.json();
+                
+                document.getElementById('totalRequests').textContent = data.globalMetrics.totalRequests;
+                document.getElementById('total429s').textContent = data.globalMetrics.total429s;
+                document.getElementById('activeIPs').textContent = data.globalMetrics.activeIPs;
+            } catch (e) {
+                console.error("Failed to fetch metrics", e);
+            }
+        }
+        
+        setInterval(fetchMetrics, 1000);
+
+        // Click handler
+        const clickArea = document.getElementById('clickArea');
+        clickArea.addEventListener('click', async (e) => {
+            // Visual ripple
+            createRipple(e);
+            
+            const start = performance.now();
+            try {
+                const res = await fetch(`${API_BASE}/image/200/200?algo=${currentAlgo}`);
+                const end = performance.now();
+                const latency = (end - start).toFixed(0);
+                
+                document.getElementById('lastStatus').textContent = res.status;
+                document.getElementById('lastLatency').textContent = latency;
+                
+                if (res.status === 200) {
+                    document.getElementById('lastStatus').className = "font-bold text-green-400";
+                    log(`[${currentAlgo}] 200 OK (${latency}ms)`, 'success');
+                } else if (res.status === 429) {
+                    document.getElementById('lastStatus').className = "font-bold text-red-400";
+                    log(`[${currentAlgo}] 429 Too Many Requests (${latency}ms)`, 'error');
+                } else {
+                    document.getElementById('lastStatus').className = "font-bold text-yellow-400";
+                    log(`[${currentAlgo}] ${res.status} (${latency}ms)`, 'warning');
+                }
+            } catch (err) {
+                log(`[${currentAlgo}] Network Error`, 'error');
+            }
+            
+            // Refresh metrics immediately after click
+            fetchMetrics();
+        });
+
+        function log(msg, type = 'neutral') {
+            const consoleEl = document.getElementById('consoleLog');
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            div.textContent = `[${time}] ${msg}`;
+            
+            if (type === 'success') div.className = 'text-green-400';
+            if (type === 'error') div.className = 'text-red-400';
+            if (type === 'warning') div.className = 'text-yellow-400';
+            if (type === 'info') div.className = 'text-blue-400';
+            if (type === 'neutral') div.className = 'text-gray-400';
+            
+            consoleEl.prepend(div);
+            if (consoleEl.children.length > 50) {
+                consoleEl.lastChild.remove();
+            }
+        }
+
+        function createRipple(event) {
+            const circle = document.createElement("span");
+            const diameter = Math.max(clickArea.clientWidth, clickArea.clientHeight);
+            const radius = diameter / 2;
+
+            const rect = clickArea.getBoundingClientRect();
+            
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - rect.left - radius}px`;
+            circle.style.top = `${event.clientY - rect.top - radius}px`;
+            circle.classList.add("absolute", "rounded-full", "bg-white", "opacity-20", "animate-ping");
+
+            const rippleContainer = document.getElementById('rippleContainer');
+            rippleContainer.appendChild(circle);
+            
+            setTimeout(() => circle.remove(), 500);
+        }
+    </script>
+</body>
+</html>
