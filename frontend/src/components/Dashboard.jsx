@@ -24,6 +24,7 @@ const Dashboard = () => {
 	const [currentAlgo, setCurrentAlgo] = useState("fixed_window");
 	const [logs, setLogs] = useState([]);
 	const [redisStatus, setRedisStatus] = useState("Checking...");
+	const [currentTime, setCurrentTime] = useState(new Date());
 
 	const fetchMetrics = async () => {
 		try {
@@ -50,7 +51,9 @@ const Dashboard = () => {
 		console.log("Dashboard using API_URL:", API_URL);
 		fetchMetrics();
 		fetchHealth();
-		// Removed interval polling
+
+		const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+		return () => clearInterval(timer);
 	}, []);
 
 	const addLog = (msg, type) => {
@@ -113,7 +116,7 @@ const Dashboard = () => {
 					/>
 				</header>
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 					<MetricsCard
 						title="Total Requests"
 						value={metrics.globalMetrics.totalRequests}
@@ -131,6 +134,11 @@ const Dashboard = () => {
 						value={metrics.globalMetrics.activeIPs}
 						label="Tracking"
 						color="text-blue-400"
+					/>
+					<MetricsCard
+						title="System Time"
+						value={currentTime.toLocaleTimeString()}
+						color="text-emerald-400"
 					/>
 				</div>
 
