@@ -152,7 +152,7 @@ _The Dashboard will open at `http://localhost:5173`_
 
 _(Add screenshots of your dashboard here)_
 
----
+## ![Dashboard](image.png)
 
 ## 🤝 Contributing
 
