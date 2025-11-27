@@ -4,7 +4,6 @@ services:
       name: rate-limiter-api
       env: docker
       plan: free
-      dockerFilePath: ./Dockerfile
       envVars:
           - key: REDIS_URL
             fromService:
