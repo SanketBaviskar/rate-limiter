@@ -1,0 +1,6 @@
+services:
+    # Redis Service
+    - type: redis
+      name: rate-limiter-redis
+      plan: free
+      ipAllowList: [] # Allow all internal connections

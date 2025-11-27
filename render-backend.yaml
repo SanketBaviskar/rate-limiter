@@ -1,0 +1,15 @@
+services:
+    # Backend Service
+    - type: web
+      name: rate-limiter-api
+      env: docker
+      plan: free
+      dockerFilePath: Dockerfile
+      envVars:
+          - key: REDIS_URL
+            fromService:
+                type: redis
+                name: rate-limiter-redis
+                property: connectionString
+          - key: PORT
+            value: 8000

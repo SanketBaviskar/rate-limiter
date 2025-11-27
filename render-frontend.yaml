@@ -1,0 +1,14 @@
+services:
+    # Frontend Static Site
+    - type: web
+      name: distributed-rate-limiter
+      env: static
+      rootDir: frontend
+      buildCommand: npm install && npm run build
+      staticPublishPath: dist
+      envVars:
+          - key: VITE_API_URL
+            fromService:
+                type: web
+                name: rate-limiter-api
+                property: url
