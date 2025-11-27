@@ -47,6 +47,7 @@ class RateLimiter:
 
     async def check_limit(self, request: Request, redis: Redis = Depends(get_redis_client)):
         client_ip = request.client.host
+        print(f"DEBUG: Rate Limiting for IP: {client_ip}")
         # Allow overriding algorithm via query param for testing
         algo = request.query_params.get("algo", self.algorithm)
         
