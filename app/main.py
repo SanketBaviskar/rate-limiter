@@ -22,7 +22,7 @@ from fastapi import FastAPI, Depends, Response, BackgroundTasks
 from app.rate_limiter import RateLimiter
 from app.utils import generate_placeholder_svg
 from app.redis_client import get_redis_client
-from app.get_data import get_weather_data, get_current_conditions
+
 import asyncio
 import os
 import json
@@ -197,8 +197,6 @@ async def root():
         "endpoints": {
             "health": "/api/health",
             "image": "/api/image/{width}/{height}",
-            "weather_forecast": "/api/weather/forecast?latitude={lat}&longitude={lon}",
-            "weather_current": "/api/weather/current/{station_id}",
             "monitor": "/api/monitor"
         }
     }

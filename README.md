@@ -1,232 +1,163 @@
-# Rate Limiter with Weather API
+# 🚀 Distributed Rate Limiter System
 
-A FastAPI-based rate limiting service that demonstrates various rate limiting algorithms (Fixed Window, Sliding Window, Token Bucket, Leaky Bucket) with integrated weather data APIs.
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![React](https://img.shields.io/badge/react-18-cyan)
+![Redis](https://img.shields.io/badge/redis-7.0-red)
+![License](https://img.shields.io/badge/license-MIT-yellow)
 
-## Features
+> **A production-grade, distributed rate limiting solution built for high-concurrency environments.**
 
--   **Multiple Rate Limiting Algorithms**:
+This project demonstrates a robust implementation of **5 industry-standard rate limiting algorithms**, capable of handling distributed traffic using **Redis** for state management. It features a **real-time interactive dashboard** built with React and Framer Motion to visualize traffic flow, algorithm behavior, and system metrics.
 
-    -   Fixed Window Counter
-    -   Sliding Window Log
-    -   Sliding Window Counter
-    -   Token Bucket
-    -   Leaky Bucket
+---
 
--   **Weather API Integration**:
+## 🌟 Key Features
 
-    -   Get weather forecasts by latitude/longitude
-    -   Get current conditions from weather stations
-    -   All weather endpoints are rate-limited
+-   **🛡️ 5 Advanced Algorithms**:
+    -   **Fixed Window Counter**: Simple and memory-efficient.
+    -   **Sliding Window Log**: Precision tracking (no boundary issues).
+    -   **Sliding Window Counter**: Hybrid approach for optimal performance/accuracy.
+    -   **Token Bucket**: Allows controlled bursts of traffic.
+    -   **Leaky Bucket**: Smooths out traffic spikes (Queue-based).
+-   **⚡ Distributed State Management**: Uses **Redis** (or FakeRedis for local dev) to maintain counters across multiple server instances, ensuring consistency in a microservices architecture.
+-   **📊 Real-Time Dashboard**:
+    -   **Live Metrics**: Watch requests, blocks (429s), and active IPs in real-time.
+    -   **Traffic Visualizer**: Animated packet flow simulation.
+    -   **Interactive Testing**: "Spam" the API manually or run auto-tests to see limits in action.
+    -   **Dynamic Configuration**: Adjust limits and windows on the fly without restarting.
+-   **🔍 Robust IP Detection**: Handles `X-Forwarded-For` headers correctly to identify clients behind load balancers (Render, Nginx, AWS ALB).
 
--   **Monitoring Dashboard**: Real-time metrics and visualization
+---
 
-## Quick Start
+## 🏗️ System Architecture
+
+The system is designed to be scalable and fault-tolerant.
+
+```mermaid
+graph TD
+    Client[Client / Dashboard] -->|HTTP Request| LB[Load Balancer / Render]
+    LB -->|Forward| API[FastAPI Backend]
+    subgraph "Application Layer"
+        API -->|Check Limit| RL[Rate Limiter Module]
+        RL -->|Get/Set Config| Config[Dynamic Config]
+    end
+    subgraph "Data Layer"
+        RL -->|Atomic Incr/Lua| Redis[(Redis / FakeRedis)]
+    end
+    RL -- Allowed --> API
+    RL -- Blocked (429) --> API
+    API -->|Response| Client
+```
+
+---
+
+## 🧠 Algorithm Logic: Token Bucket
+
+Here is how the **Token Bucket** algorithm—one of the most popular strategies—is implemented to handle bursts.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+
+    Client->>API: Request Resource
+    API->>Redis: Get Bucket State (Tokens, LastRefill)
+    Redis-->>API: Return State
+    API->>API: Calculate Refill (Time Delta * Rate)
+    alt Tokens >= 1
+        API->>Redis: Decrement Token & Update Timestamp
+        API-->>Client: 200 OK (Request Passed)
+    else Tokens < 1
+        API-->>Client: 429 Too Many Requests (Blocked)
+    end
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
--   Python 3.8+
--   Redis (for rate limiting state)
--   Docker (optional)
+-   **Python 3.9+**
+-   **Node.js 16+** (for Frontend)
+-   **Redis** (Optional, falls back to in-memory FakeRedis)
 
-### Installation
-
-1. **Install dependencies**:
+### 1. Clone the Repository
 
 ```bash
+git clone https://github.com/yourusername/rate-limiter.git
+cd rate-limiter
+```
+
+### 2. Backend Setup (FastAPI)
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+
+# Install dependencies
 pip install -r requirements.txt
-```
 
-2. **Start Redis** (if not using Docker):
-
-```bash
-redis-server
-```
-
-3. **Run the FastAPI server**:
-
-```bash
+# Run the server
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`
+_The API will start at `http://localhost:8000`_
 
-### Using Docker
-
-```bash
-docker-compose up --build
-```
-
-## API Endpoints
-
-### Weather Endpoints
-
-#### Get Weather Forecast
-
-```http
-GET /api/weather/forecast?latitude={lat}&longitude={lon}
-```
-
-**Example**:
+### 3. Frontend Setup (React + Vite)
 
 ```bash
-curl "http://localhost:8000/api/weather/forecast?latitude=39.0997&longitude=-94.5786"
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run the development server
+npm run dev
 ```
 
-**Response**:
+_The Dashboard will open at `http://localhost:5173`_
 
-```json
-{
-	"location": {
-		"latitude": 39.0997,
-		"longitude": -94.5786,
-		"city": "Kansas City",
-		"state": "MO"
-	},
-	"forecast": [
-		{
-			"name": "Tonight",
-			"temperature": 45,
-			"temperatureUnit": "F",
-			"windSpeed": "5 mph",
-			"windDirection": "N",
-			"shortForecast": "Partly Cloudy",
-			"detailedForecast": "..."
-		}
-	],
-	"updated": "2025-11-26T19:00:00+00:00"
-}
-```
+---
 
-#### Get Current Conditions
+## 🛠️ Technology Stack
 
-```http
-GET /api/weather/current/{station_id}
-```
+| Component      | Technology        | Description                                    |
+| :------------- | :---------------- | :--------------------------------------------- |
+| **Backend**    | **FastAPI**       | High-performance, async Python framework.      |
+| **Database**   | **Redis**         | In-memory key-value store for atomic counters. |
+| **Frontend**   | **React + Vite**  | Modern UI library with fast build tooling.     |
+| **Styling**    | **TailwindCSS**   | Utility-first CSS for rapid design.            |
+| **Animation**  | **Framer Motion** | Smooth, physics-based animations.              |
+| **Deployment** | **Render**        | Cloud hosting for full-stack apps.             |
 
-**Common Station IDs**:
+---
 
--   `KNYC` - New York City
--   `KLAX` - Los Angeles
--   `KORD` - Chicago
--   `KATL` - Atlanta
--   `KSEA` - Seattle
+## 🧪 API Endpoints
 
-**Example**:
+| Method | Endpoint             | Description                                           |
+| :----- | :------------------- | :---------------------------------------------------- |
+| `GET`  | `/api/image/{w}/{h}` | **Protected Resource**. Returns a placeholder image.  |
+| `GET`  | `/api/monitor`       | Returns global system metrics (Total Requests, 429s). |
+| `POST` | `/api/config`        | Dynamically updates Rate Limit (Limit, Window).       |
+| `POST` | `/api/reset`         | Resets all Redis counters and configurations.         |
+| `GET`  | `/api/health`        | Checks Redis connectivity.                            |
 
-```bash
-curl "http://localhost:8000/api/weather/current/KNYC"
-```
+---
 
-### Other Endpoints
+## 📸 Screenshots
 
-#### Placeholder Image (Rate Limited)
+_(Add screenshots of your dashboard here)_
 
-```http
-GET /api/image/{width}/{height}
-```
+---
 
-#### Monitoring Dashboard
+## 🤝 Contributing
 
-```http
-GET /api/monitor
-```
+Contributions are welcome! Please fork the repository and submit a Pull Request.
 
-Returns global metrics and rate limiting statistics.
+## 📄 License
 
-## Rate Limiting
-
-All API endpoints (except `/api/monitor`) are rate-limited to **10 requests per 60 seconds** by default.
-
-When rate limit is exceeded, you'll receive:
-
-```json
-{
-	"detail": "Rate limit exceeded. Try again later."
-}
-```
-
-HTTP Status: `429 Too Many Requests`
-
-## Testing
-
-### Test Weather API
-
-```bash
-python test_weather_api.py
-```
-
-This will:
-
--   Test the forecast endpoint
--   Test the current conditions endpoint
--   Test rate limiting behavior
-
-### Manual Testing
-
-1. **Check if server is running**:
-
-```bash
-curl http://localhost:8000/
-```
-
-2. **Test rate limiting** (send 15 requests quickly):
-
-```bash
-for i in {1..15}; do
-  curl "http://localhost:8000/api/weather/forecast?latitude=39&longitude=-94"
-  echo ""
-done
-```
-
-## Project Structure
-
-```
-.
-├── app/
-│   ├── main.py              # FastAPI application
-│   ├── rate_limiter.py      # Rate limiting algorithms
-│   ├── get_data.py          # Weather API integration
-│   ├── redis_client.py      # Redis connection
-│   └── utils.py             # Utility functions
-├── static/
-│   └── index.html           # Dashboard UI
-├── frontend/                # React dashboard (optional)
-├── test_api.py              # API tests
-├── test_weather_api.py      # Weather API tests
-├── requirements.txt         # Python dependencies
-├── Dockerfile               # Docker configuration
-└── docker-compose.yml       # Docker Compose setup
-```
-
-## Configuration
-
-Rate limiting settings can be configured in `app/main.py`:
-
-```python
-rate_limiter = RateLimiter(limit=10, window=60)
-```
-
--   `limit`: Maximum number of requests
--   `window`: Time window in seconds
-
-## Technologies
-
--   **FastAPI**: Modern Python web framework
--   **Redis**: In-memory data store for rate limiting state
--   **httpx**: Async HTTP client for weather API
--   **National Weather Service API**: Free weather data
-
-## API Documentation
-
-Once the server is running, visit:
-
--   Swagger UI: `http://localhost:8000/docs`
--   ReDoc: `http://localhost:8000/redoc`
-
-## License
-
-MIT
-
-## Contributing
-
-Feel free to submit issues and enhancement requests!
+MIT License © 2025

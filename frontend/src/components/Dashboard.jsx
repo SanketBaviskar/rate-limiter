@@ -4,6 +4,7 @@ import MetricsCard from "./MetricsCard";
 import AlgoSelector from "./AlgoSelector";
 import InteractiveClient from "./InteractiveClient";
 import RequestLog from "./RequestLog";
+import TrafficVisualizer from "./TrafficVisualizer";
 
 let API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 if (API_URL && !API_URL.startsWith("http")) {
@@ -25,6 +26,8 @@ const Dashboard = () => {
 	const [logs, setLogs] = useState([]);
 	const [redisStatus, setRedisStatus] = useState("Checking...");
 	const [currentTime, setCurrentTime] = useState(new Date());
+	const [triggerVisualizer, setTriggerVisualizer] = useState(0);
+	const [resetTrigger, setResetTrigger] = useState(0);
 
 	const fetchMetrics = async () => {
 		try {
@@ -138,6 +141,7 @@ const Dashboard = () => {
 					<MetricsCard
 						title="System Time"
 						value={currentTime.toLocaleTimeString()}
+						label={currentTime.toLocaleDateString()}
 						color="text-emerald-400"
 					/>
 				</div>
@@ -146,6 +150,8 @@ const Dashboard = () => {
 					<InteractiveClient
 						currentAlgo={currentAlgo}
 						onResponse={handleResponse}
+						onRequest={() => setTriggerVisualizer(Date.now())}
+						resetTrigger={resetTrigger}
 					/>
 					<div className="flex flex-col gap-4">
 						<RequestLog logs={logs} />
@@ -167,6 +173,7 @@ const Dashboard = () => {
 											"warning"
 										);
 										fetchMetrics(); // Refresh metrics after reset
+										setResetTrigger((prev) => prev + 1); // Trigger client reset
 									} catch (err) {
 										console.error("Failed to reset:", err);
 										addLog(
@@ -180,6 +187,7 @@ const Dashboard = () => {
 								Reset System
 							</button>
 						</div>
+						<TrafficVisualizer trigger={triggerVisualizer} />
 					</div>
 				</div>
 			</div>

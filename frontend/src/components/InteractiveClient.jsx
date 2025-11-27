@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
@@ -13,7 +13,12 @@ if (API_URL && !API_URL.startsWith("http")) {
 }
 API_URL = API_URL.replace(/\/$/, "");
 
-const InteractiveClient = ({ currentAlgo, onResponse }) => {
+const InteractiveClient = ({
+	currentAlgo,
+	onResponse,
+	onRequest,
+	resetTrigger,
+}) => {
 	const [ripples, setRipples] = useState([]);
 	const [lastStatus, setLastStatus] = useState(null);
 	const [lastLatency, setLastLatency] = useState(null);
@@ -28,6 +33,14 @@ const InteractiveClient = ({ currentAlgo, onResponse }) => {
 	const [limit, setLimit] = useState(10);
 	const [window, setWindow] = useState(60);
 
+	// Reset form when system is reset
+	useEffect(() => {
+		if (resetTrigger > 0) {
+			setLimit(10);
+			setWindow(60);
+		}
+	}, [resetTrigger]);
+
 	const updateConfig = async () => {
 		try {
 			await axios.post(`${API_URL}/api/config`, { limit, window });
@@ -39,6 +52,7 @@ const InteractiveClient = ({ currentAlgo, onResponse }) => {
 	};
 
 	const sendRequest = async () => {
+		if (onRequest) onRequest(); // Trigger animation
 		const start = performance.now();
 		try {
 			const res = await axios.get(

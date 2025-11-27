@@ -71,6 +71,8 @@ class RateLimiter:
         except Exception:
             limit = self.limit
             window = self.window
+            
+        print(f"DEBUG: Algo={algo}, Limit={limit}, Window={window}")
 
         key = f"rate_limit:{algo}:{client_ip}"
         
