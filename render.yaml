@@ -7,6 +7,7 @@ services:
       envVars:
           - key: REDIS_URL
             fromService:
+                type: redis
                 name: rate-limiter-redis
                 property: connectionString
           - key: PORT
@@ -22,8 +23,9 @@ services:
       envVars:
           - key: VITE_API_URL
             fromService:
+                type: web
                 name: rate-limiter-api
-                property: url
+                property: host
 
     # Redis Service
     - type: redis
