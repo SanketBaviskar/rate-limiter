@@ -2,10 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
-let API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-if (API_URL && !API_URL.startsWith("http")) {
-	API_URL = `https://${API_URL}`;
-}
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const InteractiveClient = ({ currentAlgo, onResponse }) => {
 	const [ripples, setRipples] = useState([]);
