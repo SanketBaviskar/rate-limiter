@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 const InteractiveClient = ({ currentAlgo, onResponse }) => {
 	const [ripples, setRipples] = useState([]);
 	const [lastStatus, setLastStatus] = useState(null);
@@ -19,10 +21,7 @@ const InteractiveClient = ({ currentAlgo, onResponse }) => {
 
 	const updateConfig = async () => {
 		try {
-			await axios.post("http://localhost:8000/api/config", {
-				limit,
-				window,
-			});
+			await axios.post(`${API_URL}/api/config`, { limit, window });
 			alert(`Config Updated: Limit=${limit}, Window=${window}s`);
 		} catch (err) {
 			console.error("Failed to update config:", err);
@@ -34,7 +33,7 @@ const InteractiveClient = ({ currentAlgo, onResponse }) => {
 		const start = performance.now();
 		try {
 			const res = await axios.get(
-				`http://localhost:8000/api/image/200/200?algo=${currentAlgo}`
+				`${API_URL}/api/image/200/200?algo=${currentAlgo}`
 			);
 			const end = performance.now();
 			const latency = (end - start).toFixed(0);
@@ -238,9 +237,7 @@ const InteractiveClient = ({ currentAlgo, onResponse }) => {
 					<button
 						onClick={async () => {
 							try {
-								await axios.post(
-									"http://localhost:8000/api/reset"
-								);
+								await axios.post(`${API_URL}/api/reset`);
 								alert("Stats and Limits Reset!");
 							} catch (err) {
 								console.error("Failed to reset:", err);
