@@ -5,7 +5,9 @@ import AlgoSelector from "./AlgoSelector";
 import InteractiveClient from "./InteractiveClient";
 import RequestLog from "./RequestLog";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = (
+	import.meta.env.VITE_API_URL || "http://localhost:8000"
+).replace(/\/$/, "");
 
 const Dashboard = () => {
 	const [metrics, setMetrics] = useState({
@@ -16,15 +18,13 @@ const Dashboard = () => {
 	const [logs, setLogs] = useState([]);
 
 	useEffect(() => {
+		console.log("Dashboard using API_URL:", API_URL);
 		const fetchMetrics = async () => {
 			try {
 				const res = await axios.get(`${API_URL}/api/monitor`);
 				setMetrics(res.data);
 			} catch (err) {
-				console.error(
-					"----------Failed to fetch metrics---------",
-					err
-				);
+				console.error("Failed to fetch metrics", err);
 			}
 		};
 
