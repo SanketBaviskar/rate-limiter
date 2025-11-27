@@ -5,9 +5,16 @@ import AlgoSelector from "./AlgoSelector";
 import InteractiveClient from "./InteractiveClient";
 import RequestLog from "./RequestLog";
 
-const API_URL = (
-	import.meta.env.VITE_API_URL || "http://localhost:8000"
-).replace(/\/$/, "");
+let API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+if (API_URL && !API_URL.startsWith("http")) {
+	// If it looks like a Render internal hostname (no dots, just alphanumeric+hyphens)
+	if (!API_URL.includes(".")) {
+		API_URL = `https://${API_URL}.onrender.com`;
+	} else {
+		API_URL = `https://${API_URL}`;
+	}
+}
+API_URL = API_URL.replace(/\/$/, "");
 
 const Dashboard = () => {
 	const [metrics, setMetrics] = useState({
