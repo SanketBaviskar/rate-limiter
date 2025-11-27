@@ -1,3 +1,37 @@
+"""
+rate_limiter.py - Rate Limiting Algorithms Implementation
+
+This module implements various rate limiting strategies using Redis as the backend store.
+
+Supported Algorithms:
+1. Fixed Window Counter
+   - Simple counter that resets at fixed time intervals
+   - Fast but can allow bursts at window boundaries
+   
+2. Sliding Window Log
+   - Maintains timestamps in a sorted set
+   - Precise but memory-intensive for high traffic
+   
+3. Sliding Window Counter (Hybrid)
+   - Weighted average of current and previous windows
+   - Good balance between accuracy and performance
+   
+4. Token Bucket
+   - Tokens refill at a constant rate
+   - Allows controlled bursts
+   
+5. Leaky Bucket
+   - Requests queue and leak at constant rate
+   - Smooths out traffic spikes
+
+Usage:
+    rate_limiter = RateLimiter(limit=10, window=60)
+    # Apply as FastAPI dependency
+    @app.get("/endpoint")
+    async def endpoint(request_passed: None = Depends(rate_limiter.check_limit)):
+        ...
+"""
+
 import time
 import asyncio
 from fastapi import HTTPException, Request, Depends

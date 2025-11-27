@@ -1,7 +1,28 @@
+"""
+main.py - FastAPI Rate Limiter Application
+
+This is the main FastAPI application that demonstrates various rate limiting algorithms.
+It includes:
+- Multiple rate limiting strategies (Fixed Window, Sliding Window, Token Bucket, Leaky Bucket)
+- Weather API integration with rate limiting applied
+- Monitoring dashboard endpoints
+- Health check endpoint for Redis connectivity
+- Background worker for Leaky Bucket algorithm
+
+Endpoints:
+- GET /                          - API information
+- GET /api/health                - Health check and Redis status
+- GET /api/monitor               - Monitoring metrics
+- GET /api/image/{w}/{h}         - Placeholder image (rate limited)
+- GET /api/weather/forecast      - Weather forecast (rate limited)
+- GET /api/weather/current/{id}  - Current conditions (rate limited)
+"""
+
 from fastapi import FastAPI, Depends, Response, BackgroundTasks
 from app.rate_limiter import RateLimiter
 from app.utils import generate_placeholder_svg
 from app.redis_client import get_redis_client
+from app.get_data import get_weather_data, get_current_conditions
 import asyncio
 import os
 
@@ -97,6 +118,80 @@ async def get_image(
     svg_content = generate_placeholder_svg(width, height)
     return Response(content=svg_content, media_type="image/svg+xml")
 
+@app.get("/api/weather/forecast")
+async def get_weather_forecast(
+    latitude: float,
+    longitude: float,
+    request_passed: None = Depends(rate_limiter.check_limit)
+):
+    """
+    Get weather forecast for a specific location.
+    Rate limiting is applied via the dependency.
+    
+    Example: /api/weather/forecast?latitude=39.7456&longitude=-97.0892
+    """
+    return await get_weather_data(latitude, longitude)
+
+@app.get("/api/weather/current/{station_id}")
+async def get_weather_current(
+    station_id: str,
+    request_passed: None = Depends(rate_limiter.check_limit)
+):
+    """
+    Get current weather conditions from a specific weather station.
+    Rate limiting is applied via the dependency.
+    
+    Example: /api/weather/current/KNYC (New York City)
+    Common station IDs: KLAX (LA), KORD (Chicago), KATL (Atlanta), KSEA (Seattle)
+    """
+    return await get_current_conditions(station_id)
+
+@app.get("/api/health")
+async def health_check(redis=Depends(get_redis_client)):
+    """
+    Health check endpoint that verifies Redis connectivity
+    """
+    try:
+        # Test Redis connection
+        await redis.ping()
+        is_fakeredis = "FakeRedis" in str(type(redis))
+        
+        # Get some basic info
+        test_key = "health_check_test"
+        await redis.set(test_key, "working", ex=10)
+        test_value = await redis.get(test_key)
+        
+        return {
+            "status": "healthy",
+            "redis": {
+                "connected": True,
+                "is_fakeredis": is_fakeredis,
+                "type": str(type(redis).__name__),
+                "test_write": test_value == "working"
+            },
+            "api": "running"
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "redis": {
+                "connected": False,
+                "error": str(e)
+            },
+            "api": "running"
+        }
+
 @app.get("/")
 async def root():
-    return {"message": "Rate Limiter API is running. Go to /api/image/{width}/{height}"}
+    return {
+        "message": "Rate Limiter API is running",
+        "endpoints": {
+            "health": "/api/health",
+            "image": "/api/image/{width}/{height}",
+            "weather_forecast": "/api/weather/forecast?latitude={lat}&longitude={lon}",
+            "weather_current": "/api/weather/current/{station_id}",
+            "monitor": "/api/monitor"
+        }
+    }
+
+

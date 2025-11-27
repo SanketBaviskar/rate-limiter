@@ -42,7 +42,7 @@ if __name__ == "__main__":
     try:
         for _ in range(10):
             try:
-                requests.get("http://localhost:8000/")
+                requests.get("https://api.weather.gov/")
                 print("Server is ready!")
                 break
             except:

@@ -1,105 +1,232 @@
-# Rate Limiter Project
+# Rate Limiter with Weather API
 
-A high-performance, scalable Rate Limiter API implemented in Python (FastAPI) and Redis. This project demonstrates four distinct rate-limiting algorithms and includes a real-time dashboard for visualization.
+A FastAPI-based rate limiting service that demonstrates various rate limiting algorithms (Fixed Window, Sliding Window, Token Bucket, Leaky Bucket) with integrated weather data APIs.
 
 ## Features
 
-- **Four Rate Limiting Algorithms**:
-    - **Fixed Window Counter**: Simple and memory-efficient, but susceptible to bursts at window boundaries.
-    - **Sliding Window Log**: Highly accurate and smooth, but higher memory usage.
-    - **Token Bucket**: Allows bursts up to capacity, then smooths out traffic. Ideal for APIs.
-    - **Leaky Bucket**: Enforces a constant output rate. Smooths bursts into a steady stream.
-- **Real-time Dashboard**: Visualize metrics and test algorithms interactively.
-- **Redis-backed**: Uses Redis for distributed state management (supports `fakeredis` for local testing without infrastructure).
-- **FastAPI**: Modern, high-performance async framework.
+-   **Multiple Rate Limiting Algorithms**:
 
-## Architecture
+    -   Fixed Window Counter
+    -   Sliding Window Log
+    -   Sliding Window Counter
+    -   Token Bucket
+    -   Leaky Bucket
 
-The system is composed of:
-1. **FastAPI Backend**: Handles requests and enforces rate limits using a custom Dependency Injection system.
-2. **Redis Store**: Stores counters, timestamps, and bucket states.
-3. **React Frontend**: A modern, responsive dashboard built with Vite, React, and Tailwind CSS.
+-   **Weather API Integration**:
 
-## Algorithms Explained
+    -   Get weather forecasts by latitude/longitude
+    -   Get current conditions from weather stations
+    -   All weather endpoints are rate-limited
 
-### 1. Fixed Window Counter
-Counts requests in a fixed time window (e.g., 60s). If count > limit, reject.
-- **Pros**: Simple, low memory.
-- **Cons**: "Window boundary problem" allows 2x limit in short time if burst happens at the edge.
+-   **Monitoring Dashboard**: Real-time metrics and visualization
 
-### 2. Sliding Window Log
-Stores a timestamp for every request. Counts timestamps in the last window.
-- **Pros**: Very accurate, no boundary issues.
-- **Cons**: High memory cost (stores every request timestamp).
-
-### 3. Sliding Window Counter (Hybrid)
-Approximates the count by using a weighted average of the previous window and the current window.
-- **Pros**: Memory efficient (only stores 2 counters), smooths out bursts.
-- **Cons**: Approximation, assumes uniform distribution in previous window.
-
-### 4. Token Bucket
-Tokens are added to a bucket at a fixed rate. Requests consume tokens.
-- **Pros**: Allows bursts (up to bucket size), efficient.
-- **Cons**: Slightly more complex to implement correctly (race conditions).
-
-### 5. Leaky Bucket
-Requests enter a queue and are processed at a constant rate.
-- **Pros**: Extremely smooth output rate.
-- **Cons**: Bursts are delayed or rejected immediately if queue is full.
-
-## Setup & Running
+## Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 16+
-- Redis (optional, falls back to in-memory `fakeredis`)
+
+-   Python 3.8+
+-   Redis (for rate limiting state)
+-   Docker (optional)
 
 ### Installation
 
-1. Clone the repository.
-2. Install Backend dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Install Frontend dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
+1. **Install dependencies**:
 
-### Running Locally
-
-1. Start the Backend (FastAPI):
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-   Runs on `http://localhost:8000`.
-
-2. Start the Frontend (Vite):
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-   Runs on `http://localhost:5173`.
-
-Access the Dashboard at [http://localhost:5173](http://localhost:5173).
-
-### Testing
-
-Run the automated test script to verify all algorithms:
 ```bash
-python test_api.py
+pip install -r requirements.txt
+```
+
+2. **Start Redis** (if not using Docker):
+
+```bash
+redis-server
+```
+
+3. **Run the FastAPI server**:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The API will be available at `http://localhost:8000`
+
+### Using Docker
+
+```bash
+docker-compose up --build
 ```
 
 ## API Endpoints
 
-- `GET /api/image/{width}/{height}?algo={algorithm}`
-  - Returns a placeholder SVG.
-  - `algo` options: `fixed_window`, `sliding_window_log`, `sliding_window_counter`, `token_bucket`, `leaky_bucket`.
-- `GET /api/monitor`
-  - Returns global and per-algorithm metrics.
+### Weather Endpoints
 
-## Deployment
+#### Get Weather Forecast
 
-A `Dockerfile` is provided for the backend. For the frontend, you would typically build it (`npm run build`) and serve the `dist` folder via FastAPI or Nginx.
+```http
+GET /api/weather/forecast?latitude={lat}&longitude={lon}
+```
 
+**Example**:
+
+```bash
+curl "http://localhost:8000/api/weather/forecast?latitude=39.0997&longitude=-94.5786"
+```
+
+**Response**:
+
+```json
+{
+	"location": {
+		"latitude": 39.0997,
+		"longitude": -94.5786,
+		"city": "Kansas City",
+		"state": "MO"
+	},
+	"forecast": [
+		{
+			"name": "Tonight",
+			"temperature": 45,
+			"temperatureUnit": "F",
+			"windSpeed": "5 mph",
+			"windDirection": "N",
+			"shortForecast": "Partly Cloudy",
+			"detailedForecast": "..."
+		}
+	],
+	"updated": "2025-11-26T19:00:00+00:00"
+}
+```
+
+#### Get Current Conditions
+
+```http
+GET /api/weather/current/{station_id}
+```
+
+**Common Station IDs**:
+
+-   `KNYC` - New York City
+-   `KLAX` - Los Angeles
+-   `KORD` - Chicago
+-   `KATL` - Atlanta
+-   `KSEA` - Seattle
+
+**Example**:
+
+```bash
+curl "http://localhost:8000/api/weather/current/KNYC"
+```
+
+### Other Endpoints
+
+#### Placeholder Image (Rate Limited)
+
+```http
+GET /api/image/{width}/{height}
+```
+
+#### Monitoring Dashboard
+
+```http
+GET /api/monitor
+```
+
+Returns global metrics and rate limiting statistics.
+
+## Rate Limiting
+
+All API endpoints (except `/api/monitor`) are rate-limited to **10 requests per 60 seconds** by default.
+
+When rate limit is exceeded, you'll receive:
+
+```json
+{
+	"detail": "Rate limit exceeded. Try again later."
+}
+```
+
+HTTP Status: `429 Too Many Requests`
+
+## Testing
+
+### Test Weather API
+
+```bash
+python test_weather_api.py
+```
+
+This will:
+
+-   Test the forecast endpoint
+-   Test the current conditions endpoint
+-   Test rate limiting behavior
+
+### Manual Testing
+
+1. **Check if server is running**:
+
+```bash
+curl http://localhost:8000/
+```
+
+2. **Test rate limiting** (send 15 requests quickly):
+
+```bash
+for i in {1..15}; do
+  curl "http://localhost:8000/api/weather/forecast?latitude=39&longitude=-94"
+  echo ""
+done
+```
+
+## Project Structure
+
+```
+.
+├── app/
+│   ├── main.py              # FastAPI application
+│   ├── rate_limiter.py      # Rate limiting algorithms
+│   ├── get_data.py          # Weather API integration
+│   ├── redis_client.py      # Redis connection
+│   └── utils.py             # Utility functions
+├── static/
+│   └── index.html           # Dashboard UI
+├── frontend/                # React dashboard (optional)
+├── test_api.py              # API tests
+├── test_weather_api.py      # Weather API tests
+├── requirements.txt         # Python dependencies
+├── Dockerfile               # Docker configuration
+└── docker-compose.yml       # Docker Compose setup
+```
+
+## Configuration
+
+Rate limiting settings can be configured in `app/main.py`:
+
+```python
+rate_limiter = RateLimiter(limit=10, window=60)
+```
+
+-   `limit`: Maximum number of requests
+-   `window`: Time window in seconds
+
+## Technologies
+
+-   **FastAPI**: Modern Python web framework
+-   **Redis**: In-memory data store for rate limiting state
+-   **httpx**: Async HTTP client for weather API
+-   **National Weather Service API**: Free weather data
+
+## API Documentation
+
+Once the server is running, visit:
+
+-   Swagger UI: `http://localhost:8000/docs`
+-   ReDoc: `http://localhost:8000/redoc`
+
+## License
+
+MIT
+
+## Contributing
+
+Feel free to submit issues and enhancement requests!

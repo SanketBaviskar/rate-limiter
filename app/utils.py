@@ -1,3 +1,12 @@
+"""
+utils.py - Utility Functions
+
+This module contains helper functions used across the application.
+
+Functions:
+- generate_placeholder_svg: Creates an SVG image with custom dimensions and color
+"""
+
 def generate_placeholder_svg(width: int, height: int, color: str = "#3b82f6") -> str:
     """
     Generates a simple SVG placeholder image.

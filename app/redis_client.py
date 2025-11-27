@@ -1,3 +1,16 @@
+"""
+redis_client.py - Redis Connection Manager
+
+This module manages the Redis connection for the rate limiting system.
+It automatically falls back to FakeRedis if a real Redis instance is not available.
+
+Environment Variables:
+- REDIS_URL: Redis connection URL (default: redis://localhost:6379/0)
+- USE_FAKEREDIS: Force use of FakeRedis for testing (default: false)
+
+The connection is lazy-initialized on first request and reused throughout the application.
+"""
+
 import redis.asyncio as redis
 import os
 import fakeredis.aioredis
