@@ -21,7 +21,10 @@ const Dashboard = () => {
 				const res = await axios.get(`${API_URL}/api/monitor`);
 				setMetrics(res.data);
 			} catch (err) {
-				console.error("Failed to fetch metrics", err);
+				console.error(
+					"----------Failed to fetch metrics---------",
+					err
+				);
 			}
 		};
 
