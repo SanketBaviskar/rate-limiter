@@ -8,7 +8,5 @@ services:
       staticPublishPath: dist
       envVars:
           - key: VITE_API_URL
-            fromService:
-                type: web
-                name: rate-limiter-api
-                property: url
+      - key: VITE_API_URL
+        value: placeholder_url_set_in_dashboard
