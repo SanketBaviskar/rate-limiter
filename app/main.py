@@ -25,6 +25,8 @@ from app.redis_client import get_redis_client
 from app.get_data import get_weather_data, get_current_conditions
 import asyncio
 import os
+import json
+from pydantic import BaseModel
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +62,18 @@ async def leaky_bucket_worker():
     
     while True:
         try:
+            # Dynamic Config
+            config_data = await redis.get("config:rate_limit")
+            if config_data:
+                config = json.loads(config_data)
+                limit = int(config.get("limit", rate_limiter.limit))
+                window = int(config.get("window", rate_limiter.window))
+            else:
+                limit = rate_limiter.limit
+                window = rate_limiter.window
+            
+            leak_interval = window / limit
+
             # Get all active buckets
             active_buckets = await redis.smembers("active_leaky_buckets")
             
@@ -68,13 +82,36 @@ async def leaky_bucket_worker():
                 # RPOP removes and returns the last element
                 await redis.rpop(key)
                 
-                # Optional: If empty, remove from active set to save cycles
-                # But for now, we keep it simple.
-                
             await asyncio.sleep(leak_interval)
         except Exception as e:
             print(f"Error in leaky bucket worker: {e}")
             await asyncio.sleep(1)
+
+class RateLimitConfig(BaseModel):
+    limit: int
+    window: int
+
+@app.post("/api/config")
+async def update_config(config: RateLimitConfig, redis=Depends(get_redis_client)):
+    """
+    Updates the rate limit configuration dynamically.
+    """
+    try:
+        await redis.set("config:rate_limit", json.dumps(config.dict()))
+        return {"status": "success", "message": f"Updated config: Limit={config.limit}, Window={config.window}s"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/reset")
+async def reset_stats(redis=Depends(get_redis_client)):
+    """
+    Resets all rate limit counters and stats in Redis.
+    """
+    try:
+        await redis.flushall()
+        return {"status": "success", "message": "All stats and limits reset"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/monitor")
 async def get_monitor_data(redis=Depends(get_redis_client)):

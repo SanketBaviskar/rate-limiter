@@ -34,6 +34,7 @@ Usage:
 
 import time
 import asyncio
+import json
 from fastapi import HTTPException, Request, Depends
 from app.redis_client import get_redis_client
 from redis.asyncio import Redis
@@ -49,6 +50,21 @@ class RateLimiter:
         # Allow overriding algorithm via query param for testing
         algo = request.query_params.get("algo", self.algorithm)
         
+        # Dynamic Configuration Override
+        try:
+            config_data = await redis.get("config:rate_limit")
+            if config_data:
+                config = json.loads(config_data)
+                # Use dynamic values if present, else fall back to defaults
+                limit = int(config.get("limit", self.limit))
+                window = int(config.get("window", self.window))
+            else:
+                limit = self.limit
+                window = self.window
+        except Exception:
+            limit = self.limit
+            window = self.window
+
         key = f"rate_limit:{algo}:{client_ip}"
         
         # Global Metrics
@@ -57,49 +73,45 @@ class RateLimiter:
         
         try:
             if algo == "fixed_window":
-                await self._fixed_window(redis, key)
+                await self._fixed_window(redis, key, limit, window)
             elif algo == "sliding_window_log":
-                await self._sliding_window_log(redis, key)
+                await self._sliding_window_log(redis, key, limit, window)
             elif algo == "sliding_window_counter":
-                await self._sliding_window_counter(redis, key)
+                await self._sliding_window_counter(redis, key, limit, window)
             elif algo == "token_bucket":
-                await self._token_bucket(redis, key)
+                await self._token_bucket(redis, key, limit, window)
             elif algo == "leaky_bucket":
-                await self._leaky_bucket(redis, key)
+                await self._leaky_bucket(redis, key, limit, window)
             else:
-                await self._fixed_window(redis, key)
+                await self._fixed_window(redis, key, limit, window)
         except HTTPException as e:
             if e.status_code == 429:
                 await redis.incr("global:total_429s")
             raise e
 
-    async def _fixed_window(self, redis: Redis, key: str):
+    async def _fixed_window(self, redis: Redis, key: str, limit: int, window: int):
         """
         Fixed Window Counter:
         Increments a counter for the current window.
         """
-        # We can use a simple key with expiration
-        # However, to avoid the race condition of "check then set", we can use INCR
-        # If key doesn't exist, INCR sets it to 1.
+        current_window = int(time.time() / window)
+        key = f"{key}:{current_window}"
         
-        # We need a key that changes every window. 
-        # Or we can just set a TTL on the first write.
-        
-        current_count = await redis.incr(key)
-        if current_count == 1:
-            await redis.expire(key, self.window)
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, window)
             
-        if current_count > self.limit:
+        if count > limit:
             raise HTTPException(status_code=429, detail="Too Many Requests (Fixed Window)")
 
-    async def _sliding_window_log(self, redis: Redis, key: str):
+    async def _sliding_window_log(self, redis: Redis, key: str, limit: int, window: int):
         """
         Sliding Window Log:
         Stores timestamps in a Sorted Set (ZSET).
         Removes old timestamps and counts the remaining.
         """
         now = time.time()
-        window_start = now - self.window
+        window_start = now - window
         
         async with redis.pipeline(transaction=True) as pipe:
             # Remove elements older than window_start
@@ -109,93 +121,96 @@ class RateLimiter:
             # Count elements in the set
             pipe.zcard(key)
             # Set expiry for the whole key to clean up if inactive
-            pipe.expire(key, self.window + 1)
+            pipe.expire(key, window + 1)
             
             results = await pipe.execute()
             
         # results[2] is the count (zcard)
         count = results[2]
         
-        if count > self.limit:
+        if count > limit:
             raise HTTPException(status_code=429, detail="Too Many Requests (Sliding Window Log)")
 
-    async def _sliding_window_counter(self, redis: Redis, key: str):
+    async def _sliding_window_counter(self, redis: Redis, key: str, limit: int, window: int):
         """
         Sliding Window Counter (Hybrid):
         Weighted average of previous window and current window.
         """
         now = time.time()
-        window_size = self.window
         
-        current_window_key = f"{key}:{int(now // window_size)}"
-        previous_window_key = f"{key}:{int(now // window_size) - 1}"
+        current_window = int(now / window)
+        prev_window = current_window - 1
         
-        # Get counts
-        curr_count = await redis.get(current_window_key)
-        prev_count = await redis.get(previous_window_key)
+        curr_key = f"{key}:{current_window}"
+        prev_key = f"{key}:{prev_window}"
+        
+        curr_count = await redis.get(curr_key)
+        prev_count = await redis.get(prev_key)
         
         curr_count = int(curr_count) if curr_count else 0
         prev_count = int(prev_count) if prev_count else 0
         
         # Calculate weighted count
-        time_into_window = now % window_size
-        weight = 1 - (time_into_window / window_size)
+        time_into_window = now % window
+        weight = 1 - (time_into_window / window)
         weighted_count = curr_count + (prev_count * weight)
         
-        if weighted_count >= self.limit:
-             raise HTTPException(status_code=429, detail="Too Many Requests (Sliding Window Counter)")
+        if weighted_count >= limit:
+            raise HTTPException(status_code=429, detail="Too Many Requests (Sliding Window Counter)")
              
         # Increment current window
-        await redis.incr(current_window_key)
-        await redis.expire(current_window_key, window_size * 2) # Keep it around for next window calculation
+        await redis.incr(curr_key)
+        await redis.expire(curr_key, window * 2)
 
-    async def _token_bucket(self, redis: Redis, key: str):
+    async def _token_bucket(self, redis: Redis, key: str, limit: int, window: int):
         """
-        Token Bucket:
-        Simple non-atomic implementation for debugging.
+        Token Bucket.
         """
-        import json
         now = time.time()
-        capacity = self.limit
-        refill_rate = self.limit / self.window
-        
+        capacity = limit
+        refill_rate = capacity / window  # tokens per second
+
         data_str = await redis.get(key)
+
         if data_str:
             try:
                 data = json.loads(data_str)
                 tokens = float(data.get("tokens", capacity))
                 last_refill = float(data.get("last_refill", now))
-            except:
+            except (ValueError, TypeError, KeyError):
+                # Corrupted data -> reset bucket
                 tokens = capacity
                 last_refill = now
         else:
             tokens = capacity
             last_refill = now
-            
-        delta = now - last_refill
-        filled_tokens = min(capacity, tokens + (delta * refill_rate))
-        
-        if filled_tokens >= 1:
-            new_tokens = filled_tokens - 1
-            new_data = json.dumps({"tokens": new_tokens, "last_refill": now})
-            await redis.set(key, new_data)
-            await redis.expire(key, 60)
-            return
-        else:
-            raise HTTPException(status_code=429, detail="Too Many Requests (Token Bucket)")
 
-    async def _leaky_bucket(self, redis: Redis, key: str):
+        # Refill tokens based on elapsed time
+        delta = max(0.0, now - last_refill)
+        filled_tokens = min(capacity, tokens + delta * refill_rate)
+
+        if filled_tokens >= 1.0:
+            new_tokens = filled_tokens - 1.0
+            new_data = json.dumps({
+                "tokens": new_tokens,
+                "last_refill": now,
+            })
+            await redis.set(key, new_data)
+            # expiry: keep around for ~2 windows after last use
+            await redis.expire(key, int(window * 2))
+            return
+
+        raise HTTPException(status_code=429, detail="Too Many Requests (Token Bucket)")
+
+    async def _leaky_bucket(self, redis: Redis, key: str, limit: int, window: int):
         """
-        Leaky Bucket:
-        Requests enter a queue. Queue leaks at a constant rate.
-        If queue is full, reject.
+        Leaky Bucket (Queue simulation).
         """
         
         # Check current queue size
         q_len = await redis.llen(key)
-        # print(f"Leaky Bucket {key}: len={q_len}, limit={self.limit}")
         
-        if q_len >= self.limit:
+        if q_len >= limit:
              raise HTTPException(status_code=429, detail="Too Many Requests (Leaky Bucket)")
              
         # Add to queue
@@ -203,4 +218,3 @@ class RateLimiter:
         # We need to make sure this key is tracked so the background worker knows to drain it.
         # We can add the key to a "active_leaky_buckets" set.
         await redis.sadd("active_leaky_buckets", key)
-
