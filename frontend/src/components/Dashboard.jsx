@@ -23,6 +23,7 @@ const Dashboard = () => {
 	});
 	const [currentAlgo, setCurrentAlgo] = useState("fixed_window");
 	const [logs, setLogs] = useState([]);
+	const [redisStatus, setRedisStatus] = useState("Checking...");
 
 	const fetchMetrics = async () => {
 		try {
@@ -33,9 +34,22 @@ const Dashboard = () => {
 		}
 	};
 
+	const fetchHealth = async () => {
+		try {
+			const res = await axios.get(`${API_URL}/api/health`);
+			const isFake = res.data.redis.is_fakeredis;
+			setRedisStatus(
+				isFake ? "FakeRedis (Local)" : "Real Redis (Shared)"
+			);
+		} catch (err) {
+			setRedisStatus("Error connecting");
+		}
+	};
+
 	useEffect(() => {
 		console.log("Dashboard using API_URL:", API_URL);
 		fetchMetrics();
+		fetchHealth();
 		// Removed interval polling
 	}, []);
 
@@ -72,9 +86,23 @@ const Dashboard = () => {
 						<h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neutral-200 to-neutral-500">
 							Rate Limiter Dashboard
 						</h1>
-						<p className="text-neutral-400 mt-2">
-							Visualize and test advanced rate limiting algorithms
-						</p>
+						<div className="flex gap-4 items-center mt-2">
+							<p className="text-neutral-400">
+								Visualize and test advanced rate limiting
+								algorithms
+							</p>
+							<span
+								className={`text-xs px-2 py-1 rounded border ${
+									redisStatus.includes("Real")
+										? "bg-green-900/30 border-green-800 text-green-400"
+										: redisStatus.includes("Fake")
+										? "bg-yellow-900/30 border-yellow-800 text-yellow-400"
+										: "bg-red-900/30 border-red-800 text-red-400"
+								}`}
+							>
+								{redisStatus}
+							</span>
+						</div>
 					</div>
 					<AlgoSelector
 						currentAlgo={currentAlgo}

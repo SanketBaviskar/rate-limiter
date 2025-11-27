@@ -155,34 +155,6 @@ async def get_image(
     svg_content = generate_placeholder_svg(width, height)
     return Response(content=svg_content, media_type="image/svg+xml")
 
-@app.get("/api/weather/forecast")
-async def get_weather_forecast(
-    latitude: float,
-    longitude: float,
-    request_passed: None = Depends(rate_limiter.check_limit)
-):
-    """
-    Get weather forecast for a specific location.
-    Rate limiting is applied via the dependency.
-    
-    Example: /api/weather/forecast?latitude=39.7456&longitude=-97.0892
-    """
-    return await get_weather_data(latitude, longitude)
-
-@app.get("/api/weather/current/{station_id}")
-async def get_weather_current(
-    station_id: str,
-    request_passed: None = Depends(rate_limiter.check_limit)
-):
-    """
-    Get current weather conditions from a specific weather station.
-    Rate limiting is applied via the dependency.
-    
-    Example: /api/weather/current/KNYC (New York City)
-    Common station IDs: KLAX (LA), KORD (Chicago), KATL (Atlanta), KSEA (Seattle)
-    """
-    return await get_current_conditions(station_id)
-
 @app.get("/api/health")
 async def health_check(redis=Depends(get_redis_client)):
     """
