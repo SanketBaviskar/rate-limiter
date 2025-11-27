@@ -24,20 +24,19 @@ const Dashboard = () => {
 	const [currentAlgo, setCurrentAlgo] = useState("fixed_window");
 	const [logs, setLogs] = useState([]);
 
+	const fetchMetrics = async () => {
+		try {
+			const res = await axios.get(`${API_URL}/api/monitor`);
+			setMetrics(res.data);
+		} catch (err) {
+			console.error("Failed to fetch metrics", err);
+		}
+	};
+
 	useEffect(() => {
 		console.log("Dashboard using API_URL:", API_URL);
-		const fetchMetrics = async () => {
-			try {
-				const res = await axios.get(`${API_URL}/api/monitor`);
-				setMetrics(res.data);
-			} catch (err) {
-				console.error("Failed to fetch metrics", err);
-			}
-		};
-
 		fetchMetrics();
-		const interval = setInterval(fetchMetrics, 1000);
-		return () => clearInterval(interval);
+		// Removed interval polling
 	}, []);
 
 	const addLog = (msg, type) => {
@@ -52,6 +51,7 @@ const Dashboard = () => {
 	};
 
 	const handleResponse = (status, latency) => {
+		fetchMetrics(); // Update metrics after every request
 		if (status === 200) {
 			addLog(`[${currentAlgo}] 200 OK (${latency}ms)`, "success");
 		} else if (status === 429) {
@@ -130,6 +130,7 @@ const Dashboard = () => {
 											"System Reset: All stats cleared",
 											"warning"
 										);
+										fetchMetrics(); // Refresh metrics after reset
 									} catch (err) {
 										console.error("Failed to reset:", err);
 										addLog(
