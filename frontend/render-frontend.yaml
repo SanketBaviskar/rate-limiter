@@ -8,3 +8,4 @@ services:
       staticPublishPath: dist
       envVars:
           - key: VITE_API_URL
+            value: https://rate-limiter-service-v4kd.onrender.com
