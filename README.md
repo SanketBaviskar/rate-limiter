@@ -56,6 +56,42 @@ graph TD
 
 ---
 
+## 📋 Requirements
+
+### Functional Requirements
+
+1.  **Multi-Algorithm Support**: The system must support Fixed Window, Sliding Window Log, Sliding Window Counter, Token Bucket, and Leaky Bucket algorithms.
+2.  **Dynamic Configuration**: Administrators must be able to update rate limits (capacity and window size) in real-time without restarting the server.
+3.  **Real-Time Monitoring**: A dashboard must visualize traffic spikes, blocked requests (429s), and active client IPs.
+4.  **Distributed State**: Rate limits must be enforced consistently across multiple backend instances.
+5.  **Client Identification**: The system must correctly identify clients via IP address, respecting `X-Forwarded-For` headers.
+
+### Non-Functional Requirements
+
+1.  **Low Latency**: The rate limiting check should add minimal overhead (< 10ms) to the request processing time.
+2.  **Scalability**: The system should scale horizontally by adding more API instances, relying on a central Redis store.
+3.  **Concurrency Control**: Race conditions must be prevented using atomic Redis operations or Lua scripts.
+4.  **Fault Tolerance**: The system should handle Redis connection failures gracefully.
+5.  **Accuracy**: The Sliding Window algorithms must provide precise boundary checks to prevent "boundary hopping" attacks.
+
+---
+
+## 💾 Database Schema (Redis)
+
+Since this project uses **Redis** (Key-Value Store), there is no traditional SQL schema. Instead, we use specific **Key Patterns** to manage state.
+
+| Key Pattern                   | Type               | Description                                                               | TTL                 |
+| :---------------------------- | :----------------- | :------------------------------------------------------------------------ | :------------------ |
+| `rate_limit:{algo}:{ip}`      | `String` / `Hash`  | Stores the counter or timestamp data for a specific client and algorithm. | Matches Window Size |
+| `rate_limit:{algo}:{ip}:logs` | `Sorted Set`       | **(Sliding Window Log)** Stores timestamps of individual requests.        | Matches Window Size |
+| `leaky_bucket:{ip}`           | `List`             | **(Leaky Bucket)** Queue representing the bucket of pending requests.     | N/A                 |
+| `config:rate_limit`           | `String` (JSON)    | Stores the current global configuration (Limit & Window).                 | Persistent          |
+| `global:total_requests`       | `String` (Counter) | Global counter for all incoming requests.                                 | Persistent          |
+| `global:total_429s`           | `String` (Counter) | Global counter for all blocked requests.                                  | Persistent          |
+| `global:active_ips`           | `Set`              | Set of all unique IP addresses seen by the system.                        | Persistent          |
+
+---
+
 ## 🧠 Algorithm Logic: Token Bucket
 
 Here is how the **Token Bucket** algorithm—one of the most popular strategies—is implemented to handle bursts.
