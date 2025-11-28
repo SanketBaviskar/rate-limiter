@@ -189,6 +189,48 @@ const Dashboard = () => {
 						<TrafficVisualizer trigger={triggerVisualizer} />
 					</div>
 				</div>
+
+				<footer className="mt-12 pt-8 border-t border-neutral-800 text-center text-neutral-500 text-sm">
+					<div className="flex flex-col md:flex-row justify-between items-center gap-4">
+						<div>
+							<p>
+								© 2025 Distributed Rate Limiter System. All
+								rights reserved.
+							</p>
+							<p className="mt-1">
+								Released under the{" "}
+								<span className="text-neutral-300">
+									MIT License
+								</span>
+								.
+							</p>
+						</div>
+
+						<div className="flex flex-col items-center md:items-end">
+							<p>
+								Designed & Developed by{" "}
+								<span className="text-white font-semibold">
+									Sanket Baviskar
+								</span>
+							</p>
+							<a
+								href="mailto:sanket@example.com"
+								className="mt-1 hover:text-blue-400 transition-colors flex items-center gap-2"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="h-4 w-4"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+								>
+									<path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+									<path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+								</svg>
+								Contact Me
+							</a>
+						</div>
+					</div>
+				</footer>
 			</div>
 		</div>
 	);
