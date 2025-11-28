@@ -19,6 +19,8 @@ import fakeredis.aioredis
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 USE_FAKEREDIS = os.getenv("USE_FAKEREDIS", "False").lower() == "true"
 
+print("[redis_client] REDIS_URL =", REDIS_URL)
+print("[redis_client] USE_FAKEREDIS =", USE_FAKEREDIS)
 # Create a Redis client instance
 # We will initialize it lazily or just handle the connection error
 redis_client = None

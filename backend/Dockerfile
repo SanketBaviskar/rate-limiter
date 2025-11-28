@@ -5,7 +5,6 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV REDIS_URL=redis://redis:6379/0
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
