@@ -2,6 +2,8 @@
 
 ## Link -> https://distributed-rate-limiter.onrender.com/
 
+## open on google chrome browser since ip address is hashed to get unique id brave blocks it
+
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![React](https://img.shields.io/badge/react-18-cyan)
