@@ -1,5 +1,8 @@
 services:
-    # Backend Service
+    - type: redis
+      name: rate-limiter-redis
+      plan: free
+
     - type: web
       name: rate-limiter-api
       env: docker
@@ -14,9 +17,3 @@ services:
                 property: connectionString
           - key: PORT
             value: 8000
-
-    # Redis Service
-    - type: redis
-      name: rate-limiter-redis
-      plan: free
-      ipAllowList: [] # Allow all internal connections

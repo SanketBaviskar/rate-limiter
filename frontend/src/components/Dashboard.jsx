@@ -7,7 +7,6 @@ import RequestLog from "./RequestLog";
 import TrafficVisualizer from "./TrafficVisualizer";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-console.log(import.meta.env.VITE_API_URL, "API_URL");
 const Dashboard = () => {
 	const [metrics, setMetrics] = useState({
 		globalMetrics: { totalRequests: 0, total429s: 0, activeIPs: 0 },
@@ -42,7 +41,6 @@ const Dashboard = () => {
 	};
 
 	useEffect(() => {
-		console.log("Dashboard using API_URL:", API_URL);
 		fetchMetrics();
 		fetchHealth();
 
