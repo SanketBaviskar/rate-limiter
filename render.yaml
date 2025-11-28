@@ -29,10 +29,7 @@ services:
       staticPublishPath: ./dist
       envVars:
           - key: VITE_API_URL
-            fromService:
-                type: web
-                name: rate-limiter-api
-                property: host
+            sync: false # Must be provided manually (Backend URL)
       routes:
           - type: rewrite
             source: /*
