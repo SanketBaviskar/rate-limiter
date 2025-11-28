@@ -141,7 +141,6 @@ const Dashboard = () => {
 					<MetricsCard
 						title="System Time"
 						value={currentTime.toLocaleTimeString()}
-						label={currentTime.toLocaleDateString()}
 						color="text-emerald-400"
 					/>
 				</div>
