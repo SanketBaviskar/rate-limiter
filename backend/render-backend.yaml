@@ -3,6 +3,7 @@ services:
     - type: web
       name: rate-limiter-api
       env: docker
+      rootDir: backend
       plan: free
       dockerFilePath: Dockerfile
       envVars:
