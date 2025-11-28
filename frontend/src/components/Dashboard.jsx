@@ -6,7 +6,11 @@ import InteractiveClient from "./InteractiveClient";
 import RequestLog from "./RequestLog";
 import TrafficVisualizer from "./TrafficVisualizer";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+let API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+if (API_URL && !API_URL.startsWith("http")) {
+	API_URL = `https://${API_URL}`;
+}
+API_URL = API_URL.replace(/\/$/, "");
 const Dashboard = () => {
 	const [metrics, setMetrics] = useState({
 		globalMetrics: { totalRequests: 0, total429s: 0, activeIPs: 0 },
