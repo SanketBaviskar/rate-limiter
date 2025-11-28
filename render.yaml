@@ -1,0 +1,41 @@
+services:
+    # 1. Redis Service
+    - type: redis
+      name: rate-limiter-redis
+      plan: free
+      ipAllowList: [] # Allow all internal connections
+
+    # 2. Backend API (FastAPI)
+    - type: web
+      name: rate-limiter-api
+      env: docker
+      rootDir: backend
+      plan: free
+      dockerFilePath: Dockerfile
+      envVars:
+          - key: REDIS_URL
+            fromService:
+                type: redis
+                name: rate-limiter-redis
+                property: connectionString
+          - key: PORT
+            value: 8000
+
+    # 3. Frontend Dashboard (React + Vite)
+    - type: web
+      name: rate-limiter-frontend
+      env: static
+      rootDir: frontend
+      plan: free
+      buildCommand: npm install && npm run build
+      staticPublishPath: ./dist
+      envVars:
+          - key: VITE_API_URL
+            fromService:
+                type: web
+                name: rate-limiter-api
+                envVar: RENDER_EXTERNAL_URL
+      routes:
+          - type: rewrite
+            source: /*
+            destination: /index.html
