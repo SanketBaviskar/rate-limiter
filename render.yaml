@@ -33,7 +33,7 @@ services:
             fromService:
                 type: web
                 name: rate-limiter-api
-                envVar: RENDER_EXTERNAL_URL
+                property: url
       routes:
           - type: rewrite
             source: /*
