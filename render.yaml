@@ -22,7 +22,7 @@ services:
 
     # 3. Frontend Dashboard (React + Vite)
     - type: web
-      name: rate-limiter-frontend
+      name: distributed-rate-limiter
       env: static
       rootDir: frontend
       buildCommand: npm install && npm run build
